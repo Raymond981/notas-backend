@@ -11,8 +11,23 @@ jobs:
       - store_artifacts:
           path: test-results.xml
           prefix: tests
+orbs:
+  aws-ecr: circleci/aws-ecr@x.y.z # Use the AWS ECR orb in your config
+
 workflows:
-  version: 2
+  version: 2  
+  test-env-vars:
+    jobs:
+      - build:
+          context: notas # has an env var called MY_ENV_VAR
   test:
     jobs:
       - test
+  build_and_push_image: 
+    jobs:
+      - aws-ecr/build_and_push_image: # Use the pre-defined `build_and_push_image` job
+          dockerfile: Dockerfile
+          path: 
+          profile-name: raymond981
+          repo: raymond981/notas-backend
+          tag: tagname # default - latest
