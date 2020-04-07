@@ -42,6 +42,7 @@ jobs:
           command: |
             docker-compose build
             echo ${DOCKER_PWD} | docker login -u ${DOCKER_LOGIN} --password-stdin
-            docker push ${DOCKER_LOGIN}/${IMAGE_NAME}
+            docker tag project_web:latest raymond981/notas-backend:tagname
+            docker push raymond981/notas-backend:tagname
 
 
