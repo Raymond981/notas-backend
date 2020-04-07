@@ -1,33 +1,47 @@
-version: 2
+version: 2.1
+
+orbs:
+  aws-ecr: circleci/node:latest
+
+workflows:
+  build_test_deploy:
+    jobs:
+      - build_test
+      - docker_hub_build_push_image:
+          requires:
+            - build_test
+      - aws-ecr/build_and_push_image:
+          region: us-east-2
+          account-url: ${AWS_ECR_ACCOUNT_URL}
+          repo: ${CIRCLE_PROJECT_REPONAME}
+          tag: ${CIRCLE_BUILD_NUM}
+          requires:
+            - build_test
 jobs:
-  test:
+  build_test:
     docker:
       - image: circleci/node:latest
     steps:
       - checkout
-      - run: 
-          name: npm install
-          command: npm install
-      - store_artifacts:
-          path: test-results.xml
-          prefix: tests
-orbs:
-  aws-ecr: circleci/aws-ecr@x.y.z # Use the AWS ECR orb in your config
+      - run:
+          name: Setup
+          command:
+            npm install
+  docker_hub_build_push_image:
+    docker:
+      - image: circleci/node:latest
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: false
+      - run:
+          name: Build and push Docker image to Docker Hub
+          command: |
+            echo 'export TAG=0.1.${CIRCLE_BUILD_NUM}' >> ${BASH_ENV}
+            echo 'export IMAGE_NAME=${CIRCLE_PROJECT_REPONAME}' >> ${BASH_ENV}
+            source ${BASH_ENV}
+            docker build -t ${DOCKER_LOGIN}/${IMAGE_NAME} -t ${DOCKER_LOGIN}/${IMAGE_NAME}:${TAG} .
+            echo ${DOCKER_PWD} | docker login -u ${DOCKER_LOGIN} --password-stdin
+            docker push ${DOCKER_LOGIN}/${IMAGE_NAME}
 
-workflows:
-  version: 2  
-  test-env-vars:
-    jobs:
-      - build:
-          context: notas # has an env var called MY_ENV_VAR
-  test:
-    jobs:
-      - test
-  build_and_push_image: 
-    jobs:
-      - aws-ecr/build_and_push_image: # Use the pre-defined `build_and_push_image` job
-          dockerfile: "Dockerfile"
-          path: ""
-          profile-name: "raymond981"
-          repo: "raymond981/notas-backend"
-          tag: "tagname" # default - latest
+
